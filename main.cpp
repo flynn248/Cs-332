@@ -6,18 +6,17 @@
 const int GENERATION_SIZE = 1000;
 const int MAX_GENERATIONS = 1000;
 const int PARENT_COUNT = 20;
-const int FITNESS_THRESHOLD = 10; // can do a ratio of correct letters to incorrect ones
-const int GENOTYPE_SIZE = 10;
+const int FITNESS_THRESHOLD = 68; // can do a ratio of correct letters to incorrect ones
+const int GENOTYPE_SIZE = 68;
 const double MUTATION_RATE = 0.1;
 char getRandomChar();
+int getRandomNumber(int, int);
 std::string getRandomGenotype();
 void geneticAlgorithm();
+void mutate(Organism&);
 void evaluate(Organism&);
 Organism breed(std::unique_ptr<Organism[]>&);
-void mutate(Organism&);
 void insertionSort(std::unique_ptr<Organism[]>&);
-template <typename T>
-T getRandomNumber(int, int);
 
 int main() {
 	geneticAlgorithm();
@@ -43,10 +42,6 @@ void geneticAlgorithm() {
 			std::cout << generation[i].getFitness() << " ";
 		}
 		std::cout << std::endl;
-		//Sort decending
-		//sortDecending(generation) by fitness
-
-		//Print stuff
 
 		if (generation[0].getFitness() >= FITNESS_THRESHOLD) 	{
 			break;
@@ -68,10 +63,11 @@ void geneticAlgorithm() {
 		generation.reset();
 		generation = std::move(nextGeneration);
 	}
+	generation[0].printGenotype();
 }
 
 void evaluate(Organism& organ) {
-	std::string password = "HELLOWORLD";
+	std::string password = "What is the answer to life, the universe, and everything? Answer: 42";
 
 	int fitness = 0;
 	for (int i = 0; i < GENOTYPE_SIZE; i++) 		{
@@ -87,7 +83,7 @@ Organism breed(std::unique_ptr<Organism[]>& parents) {
 	std::unique_ptr<char[]> genotype = std::make_unique<char[]>(GENOTYPE_SIZE);
 
 	for (int i = 0; i < GENOTYPE_SIZE; i++) 		{
-		Organism parentToInheritFrom = parents[getRandomNumber<int>(0, PARENT_COUNT-1)];
+		Organism parentToInheritFrom = parents[getRandomNumber(0, PARENT_COUNT-1)];
 		genotype[i] = parentToInheritFrom.getAlleleAt(i);
 	}
 	
@@ -96,7 +92,7 @@ Organism breed(std::unique_ptr<Organism[]>& parents) {
 
 void mutate(Organism& organ) {
 	for (int i = 0; i < GENOTYPE_SIZE; i++) 		{
-		if ((getRandomNumber<int>(0,100) / 100.f)  < MUTATION_RATE) 	{
+		if ((getRandomNumber(0,100) / 100.f)  < MUTATION_RATE) 	{
 			organ.mutateAlleleAt(i, getRandomChar());
 		}
 	}
@@ -109,18 +105,12 @@ std::string getRandomGenotype() {
 	
 	return genotype;
 }
-char getRandomChar() { //get random number between 0 < ri <= r
-	srand(time(0));
-	thread_local std::mt19937 rng(rand()); //seed
-	std::uniform_int_distribution<int> generator(65, 90); // min, max
-	return static_cast<char>(generator(rng));
-}
+char getRandomChar() { return static_cast<char>(getRandomNumber(32, 122)); }
 
-template<typename T>
-T getRandomNumber(int min, int max) {
+int getRandomNumber(int min, int max) {
 	srand(time(0));
 	thread_local std::mt19937 rng(rand()); //seed
-	std::uniform_int_distribution<T> generator(min, max); // min, max
+	std::uniform_int_distribution<int> generator(min, max); // min, max
 	return generator(rng);
 }
 

@@ -18,6 +18,7 @@ public:
 	void mutateAlleleAt(const int&, const char);
 	void setFitness(const int&);
 	int getFitness() const;
+	void printGenotype();
 };
 Organism::Organism(){
 	genotype = nullptr;
@@ -60,5 +61,12 @@ void Organism::mutateAlleleAt(const int& index, const char mutation) {
 	genotype[index] = mutation;
 }
 int Organism::getFitness() const { return fitness; }
+
+void Organism::printGenotype() {
+	for (int i = 0; i < genoTypeSize; i++) 		{
+		std::cout << genotype[i];
+	}
+	std::cout << std::endl;
+}
 #endif // !ORGANISM_H
 
