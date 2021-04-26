@@ -1,3 +1,7 @@
+//Intro to AI Spring 2021
+//Program 3: Genetic Algorithm
+//Developed by Shane Flynn
+//Finding a secret phrase using a genetic algorithm
 #include <iostream>
 #include <memory>
 #include <random>
