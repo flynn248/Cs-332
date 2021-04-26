@@ -2,13 +2,15 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <thread>
 #include "Organism.h"
+#include "Timer.h"
 const int GENERATION_SIZE = 1000;
 const int MAX_GENERATIONS = 1000;
 const int PARENT_COUNT = 20;
 const int FITNESS_THRESHOLD = 68; // can do a ratio of correct letters to incorrect ones
 const int GENOTYPE_SIZE = 68;
-const double MUTATION_RATE = 0.1;
+const double MUTATION_RATE = 0.07;
 char getRandomChar();
 int getRandomNumber(int, int);
 std::string getRandomGenotype();
@@ -16,32 +18,42 @@ void geneticAlgorithm();
 void mutate(Organism&);
 void evaluate(Organism&);
 Organism breed(std::unique_ptr<Organism[]>&);
-void insertionSort(std::unique_ptr<Organism[]>&);
+void mergeSort(std::unique_ptr<Organism[]>&, int, int);
+
+void threadEvaluate(std::unique_ptr<Organism[]>&, const int, const int);
+void threadBreedAndMutate(std::unique_ptr<Organism[]>&, std::unique_ptr<Organism[]>&, const int, const int);
 
 int main() {
+	{
+	Timer time;
 	geneticAlgorithm();
+	std::cout << "End time: ";
+	}
 	std::cin.get();
 	return 0;
 }
 
 void geneticAlgorithm() {
+	std::vector<std::thread> threads;
 	std::unique_ptr<Organism[]> generation = std::make_unique<Organism[]>(GENERATION_SIZE);
 
 	for (int i = 0; i < GENERATION_SIZE; i++)
 		generation[i] = Organism(getRandomGenotype(), GENOTYPE_SIZE);
-
+	int itterations = 0;
 	for (int g = 0; g < MAX_GENERATIONS; g++) 		{
+		itterations++;
 		
-		for (int i = 0; i < GENERATION_SIZE; i++) 		{
-			evaluate(generation[i]);
-		}
+		threads.emplace_back(&threadEvaluate, std::ref(generation), 0, GENERATION_SIZE / 2);
+		threads.emplace_back(&threadEvaluate, std::ref(generation), GENERATION_SIZE / 2, GENERATION_SIZE);
 
+		for (auto& th : threads)
+			th.join();
+		threads.clear();
 
-		insertionSort(generation);
-		for (int i = 0; i < PARENT_COUNT; i++) 		{
-			std::cout << generation[i].getFitness() << " ";
-		}
-		std::cout << std::endl;
+		mergeSort(generation, 0, GENERATION_SIZE-1);
+		std::cout << "Gen " << (g+1) << ". " <<
+			"Fitness: " << generation[0].getFitness() << " ";
+		generation[0].printGenotype();
 
 		if (generation[0].getFitness() >= FITNESS_THRESHOLD) 	{
 			break;
@@ -51,19 +63,35 @@ void geneticAlgorithm() {
 		for (int p = 0; p < PARENT_COUNT; p++) 		{
 			parents[p] = generation[p];
 		}
-		
 		std::unique_ptr<Organism[]> nextGeneration = std::make_unique<Organism[]>(GENERATION_SIZE);
-		for (int i = 0; i < GENERATION_SIZE; i++) 		{
-			nextGeneration[i] = breed(parents);
-		}
+		threads.emplace_back(&threadBreedAndMutate, std::ref(nextGeneration), std::ref(parents), 0, GENERATION_SIZE / 2);
+		threads.emplace_back(&threadBreedAndMutate, std::ref(nextGeneration), std::ref(parents), GENERATION_SIZE / 2, GENERATION_SIZE);
 
-		for (int i = 0; i < GENERATION_SIZE; i++) 		{
-			mutate(nextGeneration[i]);
-		}
+		for (auto& th : threads)
+			th.join();
+		threads.clear();
+
 		generation.reset();
 		generation = std::move(nextGeneration);
+		
 	}
-	generation[0].printGenotype();
+	std::cout << "# itterations: " << itterations << std::endl;
+}
+
+void threadEvaluate(std::unique_ptr<Organism[]>& generation, const int start, const int end) {
+	for (thread_local int i = start; i < end; i++) {
+		evaluate(generation[i]);
+	}
+}
+
+void threadBreedAndMutate(std::unique_ptr<Organism[]>& nextGeneration, std::unique_ptr<Organism[]>& parents, const int start, const int end) {
+	for (thread_local int i = start; i < end; i++) {
+		nextGeneration[i] = breed(parents);
+	}
+
+	for (thread_local int i = start; i < end; i++) {
+		mutate(nextGeneration[i]);
+	}
 }
 
 void evaluate(Organism& organ) {
@@ -114,16 +142,40 @@ int getRandomNumber(int min, int max) {
 	return generator(rng);
 }
 
-void insertionSort(std::unique_ptr<Organism []>& generation) {
+void mergeSort(std::unique_ptr<Organism[]>& generation, int left, int right) {
+	if (left < right) 	{
+		int mid = (left + right) / 2;
+		mergeSort(generation, left, mid);
+		mergeSort(generation, mid + 1, right);
+		std::unique_ptr<Organism[]> mergedArray = std::make_unique<Organism[]>(right - left + 1);
+		int i = left,
+			j = mid + 1,
+			k = 0;
+		while (i <= mid && j <= right) 	{
+			if (generation[i].getFitness() > generation[j].getFitness()) {
+				mergedArray[k] = generation[i];
+				i++;
+			}
+			else {
+				mergedArray[k] = generation[j];
+				j++;
+			}
+			k++;
+		}
+		while (i <= mid) 	{
+			mergedArray[k] = generation[i];
+			i++;
+			k++;
+		}
+		while (j <= right) 	{
+			mergedArray[k] = generation[j];
+			j++;
+			k++;
+		}
 
-	for (int i = 1; i < GENERATION_SIZE; i++) 		{
-		int j = i;
-		Organism temp = generation[j];
-
-		while (j > 0 && temp.getFitness() > generation[j-1].getFitness()) 	{
-			generation[j] = generation[j - 1];
-			j--;
-			generation[j] = temp;
+		int z = 0;
+		for (int w = left; w <= right; w++) 		{
+			generation[w] = mergedArray[z++];
 		}
 	}
 }
